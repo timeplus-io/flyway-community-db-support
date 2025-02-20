@@ -161,7 +161,20 @@ public class TimeplusDatabase extends Database<TimeplusConnection> {
 
     @Override
     public Pair<String, Object> getDeleteStatement(Table table, boolean version, String filter) {
-        String deleteStatement = "ALTER STREAM " + table + " DELETE WHERE " + this.quote("success") + " = " + this.getBooleanFalse() + " AND " + (version ? this.quote("version") + " = ?" : this.quote("description") + " = ?");
+        boolean useMutableStream;
+        try{
+            useMutableStream = canDeleteFromMutableStream();
+        } catch (SQLException e) {
+            useMutableStream = false;
+        }
+
+        String deleteStatement;
+        if(useMutableStream){
+            deleteStatement = "DELETE FROM " + table;
+        }else{
+            deleteStatement = "ALTER STREAM " + table + " DELETE";
+        }
+        deleteStatement += " WHERE " + this.quote("success") + " = " + this.getBooleanFalse() + " AND " + (version ? this.quote("version") + " = ?" : this.quote("description") + " = ?");
         return Pair.of(deleteStatement, filter);
     }
 
