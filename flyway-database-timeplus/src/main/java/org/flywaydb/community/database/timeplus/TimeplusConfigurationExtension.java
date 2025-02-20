@@ -41,13 +41,6 @@ import java.util.Map;
 
 @Getter
 public class TimeplusConfigurationExtension implements ConfigurationExtension {
-    private static final String CLUSTER_NAME = "flyway.timeplus.clusterName";
-    private static final String ZOOKEEPER_PATH = "flyway.timeplus.zookeeperPath";
-
-    private static final String ZOOKEEPER_PATH_DEFAULT_VALUE = "/timeplus/tables/{shard}/{database}/{table}";
-
-    private String clusterName;
-    private String zookeeperPath = ZOOKEEPER_PATH_DEFAULT_VALUE;
 
     @Override
     public String getNamespace() {
@@ -55,26 +48,7 @@ public class TimeplusConfigurationExtension implements ConfigurationExtension {
     }
 
     @Override
-    public void extractParametersFromConfiguration(Map<String, String> configuration) {
-        String clusterName = configuration.remove(CLUSTER_NAME);
-        if (clusterName != null) {
-            this.clusterName = clusterName;
-        }
-
-        String zookeeperPath = configuration.remove(ZOOKEEPER_PATH);
-        if (zookeeperPath != null) {
-            this.zookeeperPath = zookeeperPath;
-        }
-    }
-
-    @Override
     public String getConfigurationParameterFromEnvironmentVariable(String environmentVariable) {
-        if ("FLYWAY_TIMEPLUS_CLUSTER_NAME".equals(environmentVariable)) {
-            return CLUSTER_NAME;
-        }
-        if ("FLYWAY_TIMEPLUS_ZOOKEEPER_PATH".equals(environmentVariable)) {
-            return ZOOKEEPER_PATH;
-        }
         return null;
     }
 }

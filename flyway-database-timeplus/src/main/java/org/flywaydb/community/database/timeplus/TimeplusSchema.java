@@ -73,9 +73,7 @@ public class TimeplusSchema extends Schema<TimeplusDatabase, TimeplusTable> {
     @Override
     protected void doCreate() throws SQLException {
         TimeplusConnection systemConnection = database.getSystemConnection();
-        String clusterName = database.getClusterName();
-        boolean isClustered = StringUtils.hasText(clusterName);
-        systemConnection.getJdbcTemplate().executeStatement("CREATE DATABASE " + database.quote(name) + (false && isClustered ? (" ON CLUSTER " + clusterName) : ""));
+        systemConnection.getJdbcTemplate().executeStatement("CREATE DATABASE " + database.quote(name) );
     }
 
     @Override
@@ -83,9 +81,7 @@ public class TimeplusSchema extends Schema<TimeplusDatabase, TimeplusTable> {
         if (database.getMainConnection().getCurrentSchemaNameOrSearchPath().equals(name)) {
             database.getMainConnection().doChangeCurrentSchemaOrSearchPathTo(Optional.ofNullable(database.getConfiguration().getDefaultSchema()).orElse(DEFAULT_SCHEMA));
         }
-        String clusterName = database.getClusterName();
-        boolean isClustered = StringUtils.hasText(clusterName);
-        jdbcTemplate.executeStatement("DROP DATABASE " + database.quote(name) + (isClustered ? (" ON CLUSTER " + clusterName) : ""));
+        jdbcTemplate.executeStatement("DROP DATABASE " + database.quote(name) );
     }
 
     @Override

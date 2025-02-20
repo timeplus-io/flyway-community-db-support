@@ -59,14 +59,6 @@ public class TimeplusDatabase extends Database<TimeplusConnection> {
         super(configuration, jdbcConnectionFactory, statementInterceptor);
     }
 
-    public String getClusterName() {
-        return configuration.getPluginRegister().getPlugin(TimeplusConfigurationExtension.class).getClusterName();
-    }
-
-    public String getZookeeperPath() {
-        return configuration.getPluginRegister().getPlugin(TimeplusConfigurationExtension.class).getZookeeperPath();
-    }
-
     public TimeplusConnection getSystemConnection() {
         // Queries on system.XX fail with "Code: 81. DB::Exception: Database the_database doesn't exist. (UNKNOWN_DATABASE) (version 23.7.1.2470 (official build))"
         // in case the current catalog (database) is not yet created.
@@ -129,12 +121,21 @@ public class TimeplusDatabase extends Database<TimeplusConnection> {
         super.close();
     }
 
+    private boolean canDeleteFromMutableStream() throws SQLException {
+        TimeplusConnection sysConn = getSystemConnection();
+        String version = sysConn.getJdbcTemplate().queryForString("SELECT version()");
+        return version.startsWith("2.7.");
+    }
+
     @Override
     public String getRawCreateScript(Table table, boolean baseline) {
-        String clusterName = getClusterName();
-        boolean isClustered = StringUtils.hasText(clusterName);
-
-        String script = "CREATE STREAM IF NOT EXISTS " + table + (isClustered ? (" ON CLUSTER " + clusterName) : "") + "(" +
+        boolean useMutableStream;
+        try{
+            useMutableStream = canDeleteFromMutableStream();
+        } catch (SQLException e) {
+            useMutableStream = false;
+        }
+        String script = "CREATE " + (useMutableStream?"MUTABLE":"")+" STREAM IF NOT EXISTS " + table + "(" +
                         "    installed_rank int32," +
                         "    version nullable(string)," +
                         "    description string," +
@@ -149,14 +150,11 @@ public class TimeplusDatabase extends Database<TimeplusConnection> {
 
         String engine;
 
-        if (isClustered) {
-            engine = "ReplicatedMergeTree('" + getZookeeperPath() + "', '{replica}')";
-        } else {
-            engine = "MergeTree";
+        if (!useMutableStream) {
+            script += " ENGINE = MergeTree ";
         }
 
-        script += " ENGINE = " + engine +
-                " PRIMARY KEY (script);";
+        script += " PRIMARY KEY (script);";
 
         return script + (baseline ? getBaselineStatement(table) + ";" : "");
     }

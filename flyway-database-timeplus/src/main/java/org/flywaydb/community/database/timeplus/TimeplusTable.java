@@ -55,9 +55,7 @@ public class TimeplusTable extends Table<TimeplusDatabase, TimeplusSchema> {
 
     @Override
     protected void doDrop() throws SQLException {
-        String clusterName = database.getClusterName();
-
-        jdbcTemplate.executeStatement("DROP STREAM " + this + (StringUtils.hasText(clusterName) ? (" ON CLUSTER " + clusterName) : ""));
+        jdbcTemplate.executeStatement("DROP STREAM " + this);
     }
 
     @Override
