@@ -57,6 +57,7 @@ public class TimeplusDatabase extends Database<TimeplusConnection> {
 
     public TimeplusDatabase(Configuration configuration, JdbcConnectionFactory jdbcConnectionFactory, StatementInterceptor statementInterceptor) {
         super(configuration, jdbcConnectionFactory, statementInterceptor);
+        ensureDatabaseIsRecentEnough("2.8");
     }
 
     public TimeplusConnection getSystemConnection() {
@@ -121,70 +122,34 @@ public class TimeplusDatabase extends Database<TimeplusConnection> {
         super.close();
     }
 
-    private boolean canDeleteFromMutableStream() throws SQLException {
-        TimeplusConnection sysConn = getSystemConnection();
-        String version = sysConn.getJdbcTemplate().queryForString("SELECT version()");
-        return version.startsWith("2.7.");
-    }
-
     @Override
     public String getRawCreateScript(Table table, boolean baseline) {
-        boolean useMutableStream;
-        try{
-            useMutableStream = canDeleteFromMutableStream();
-        } catch (SQLException e) {
-            useMutableStream = false;
-        }
-        String script = "CREATE " + (useMutableStream?"MUTABLE":"")+" STREAM IF NOT EXISTS " + table + "(" +
+        String script = "CREATE MUTABLE STREAM IF NOT EXISTS " + table + "(" +
                         "    installed_rank int32," +
                         "    version nullable(string)," +
                         "    description string," +
                         "    type string," +
                         "    script string," +
-                        "    checksum nullable(int32)," +
+                        "    checksum nullable(int64)," +
                         "    installed_by string," +
                         "    installed_on datetime DEFAULT now()," +
                         "    execution_time int32," +
                         "    success bool" +
-                ")";
-
-        String engine;
-
-        if (!useMutableStream) {
-            script += " ENGINE = MergeTree ";
-        }
-
-        script += " PRIMARY KEY (script);";
+                ") PRIMARY KEY (installed_rank) SETTINGS coalesced = true";
 
         return script + (baseline ? getBaselineStatement(table) + ";" : "");
     }
 
     @Override
     public Pair<String, Object> getDeleteStatement(Table table, boolean version, String filter) {
-        boolean useMutableStream;
-        try{
-            useMutableStream = canDeleteFromMutableStream();
-        } catch (SQLException e) {
-            useMutableStream = false;
-        }
-
-        String deleteStatement;
-        if(useMutableStream){
-            deleteStatement = "DELETE FROM " + table;
-        }else{
-            deleteStatement = "ALTER STREAM " + table + " DELETE";
-        }
-        deleteStatement += " WHERE " + this.quote("success") + " = " + this.getBooleanFalse() + " AND " + (version ? this.quote("version") + " = ?" : this.quote("description") + " = ?");
+        String deleteStatement="DELETE FROM " + table + " WHERE " + this.quote("success") + " = " + this.getBooleanFalse() + " AND " + (version ? this.quote("version") + " = ?" : this.quote("description") + " = ?");
         return Pair.of(deleteStatement, filter);
     }
 
     @Override
     public String getUpdateStatement(Table table) {
-        return "ALTER STREAM " + table
-               + " UPDATE "
-               + quote("description") + "=? , "
-               + quote("type") + "=? , "
-               + quote("checksum") + "=?"
-               + " WHERE " + quote("installed_rank") + "=?";
+        return "INSERT INTO " + table
+               + "(description,type,checksum,installed_rank) VALUES(?,?,?,?)";
     }
+
 }
