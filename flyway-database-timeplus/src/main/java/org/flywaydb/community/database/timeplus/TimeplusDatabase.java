@@ -59,14 +59,6 @@ public class TimeplusDatabase extends Database<TimeplusConnection> {
         super(configuration, jdbcConnectionFactory, statementInterceptor);
     }
 
-    public String getClusterName() {
-        return configuration.getPluginRegister().getPlugin(TimeplusConfigurationExtension.class).getClusterName();
-    }
-
-    public String getZookeeperPath() {
-        return configuration.getPluginRegister().getPlugin(TimeplusConfigurationExtension.class).getZookeeperPath();
-    }
-
     public TimeplusConnection getSystemConnection() {
         // Queries on system.XX fail with "Code: 81. DB::Exception: Database the_database doesn't exist. (UNKNOWN_DATABASE) (version 23.7.1.2470 (official build))"
         // in case the current catalog (database) is not yet created.
@@ -131,10 +123,7 @@ public class TimeplusDatabase extends Database<TimeplusConnection> {
 
     @Override
     public String getRawCreateScript(Table table, boolean baseline) {
-        String clusterName = getClusterName();
-        boolean isClustered = StringUtils.hasText(clusterName);
-
-        String script = "CREATE STREAM IF NOT EXISTS " + table + (isClustered ? (" ON CLUSTER " + clusterName) : "") + "(" +
+        String script = "CREATE STREAM IF NOT EXISTS " + table + " (" +
                         "    installed_rank int32," +
                         "    version nullable(string)," +
                         "    description string," +
@@ -145,18 +134,7 @@ public class TimeplusDatabase extends Database<TimeplusConnection> {
                         "    installed_on datetime DEFAULT now()," +
                         "    execution_time int32," +
                         "    success bool" +
-                ")";
-
-        String engine;
-
-        if (isClustered) {
-            engine = "ReplicatedMergeTree('" + getZookeeperPath() + "', '{replica}')";
-        } else {
-            engine = "MergeTree";
-        }
-
-        script += " ENGINE = " + engine +
-                " PRIMARY KEY (script);";
+                ") ORDER BY script ";
 
         return script + (baseline ? getBaselineStatement(table) + ";" : "");
     }

@@ -34,15 +34,16 @@
  */
 package org.flywaydb.community.database.timeplus;
 
-import lombok.CustomLog;
+import org.flywaydb.core.api.logging.Log;
+import org.flywaydb.core.api.logging.LogFactory;
 import org.flywaydb.core.internal.database.base.Table;
 import org.flywaydb.core.internal.jdbc.JdbcTemplate;
 import org.flywaydb.core.internal.util.StringUtils;
 
 import java.sql.SQLException;
 
-@CustomLog
 public class TimeplusTable extends Table<TimeplusDatabase, TimeplusSchema> {
+    private static final Log LOG = LogFactory.getLog(TimeplusTable.class);
     /**
      * @param jdbcTemplate The JDBC template for communicating with the DB.
      * @param database The database-specific support.
@@ -55,9 +56,7 @@ public class TimeplusTable extends Table<TimeplusDatabase, TimeplusSchema> {
 
     @Override
     protected void doDrop() throws SQLException {
-        String clusterName = database.getClusterName();
-
-        jdbcTemplate.executeStatement("DROP STREAM " + this + (StringUtils.hasText(clusterName) ? (" ON CLUSTER " + clusterName) : ""));
+        jdbcTemplate.executeStatement("DROP STREAM " + this);
     }
 
     @Override

@@ -34,12 +34,10 @@
  */
 package org.flywaydb.community.database.timeplus;
 
-import lombok.Getter;
 import org.flywaydb.core.extensibility.ConfigurationExtension;
 
 import java.util.Map;
 
-@Getter
 public class TimeplusConfigurationExtension implements ConfigurationExtension {
     private static final String CLUSTER_NAME = "flyway.timeplus.clusterName";
     private static final String ZOOKEEPER_PATH = "flyway.timeplus.zookeeperPath";
@@ -48,6 +46,14 @@ public class TimeplusConfigurationExtension implements ConfigurationExtension {
 
     private String clusterName;
     private String zookeeperPath = ZOOKEEPER_PATH_DEFAULT_VALUE;
+
+    public String getClusterName() {
+        return clusterName;
+    }
+
+    public String getZookeeperPath() {
+        return zookeeperPath;
+    }
 
     @Override
     public String getNamespace() {
